@@ -39,5 +39,5 @@ npx wrangler pages dev .
 如需直接上传部署：
 
 ```bash
-npx wrangler pages deploy . --project-name chess
+npx wrangler pages deploy . --project-name board-game-turn-timer
 ```
