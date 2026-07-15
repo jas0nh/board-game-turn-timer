@@ -33,11 +33,11 @@ python3 -m http.server 8000 --bind 0.0.0.0
 本项目包含 `wrangler.jsonc`，可用于本地 Cloudflare Pages 预览：
 
 ```bash
-npx wrangler pages dev .
+pnpm dlx wrangler pages dev .
 ```
 
 如需直接上传部署：
 
 ```bash
-npx wrangler pages deploy . --project-name board-game-turn-timer
+pnpm dlx wrangler pages deploy . --project-name board-game-turn-timer
 ```
