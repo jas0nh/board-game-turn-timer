@@ -14,6 +14,11 @@ const diceDefinitions = {
 };
 
 const elements = {
+  toolTabs: document.querySelector('.tool-tabs'),
+  timerTab: document.querySelector('#timerTab'),
+  diceTab: document.querySelector('#diceTab'),
+  timerPanel: document.querySelector('#timerPanel'),
+  dicePanel: document.querySelector('#dicePanel'),
   timerSetup: document.querySelector('#timerSetup'),
   timerGame: document.querySelector('#timerGame'),
   timerSettingsBtn: document.querySelector('#timerSettingsBtn'),
@@ -23,6 +28,14 @@ const elements = {
   playersEditor: document.querySelector('#playersEditor'),
   startPlayerSelect: document.querySelector('#startPlayerSelect'),
   startGameBtn: document.querySelector('#startGameBtn'),
+  duelTimer: document.querySelector('#duelTimer'),
+  duelPlayers: [document.querySelector('#duelPlayer0'), document.querySelector('#duelPlayer1')],
+  duelNames: [document.querySelector('#duelName0'), document.querySelector('#duelName1')],
+  duelStatuses: [document.querySelector('#duelStatus0'), document.querySelector('#duelStatus1')],
+  duelTimes: [document.querySelector('#duelTime0'), document.querySelector('#duelTime1')],
+  duelRound: document.querySelector('#duelRound'),
+  duelPauseBtn: document.querySelector('#duelPauseBtn'),
+  multiTimer: document.querySelector('#multiTimer'),
   activePlayerCard: document.querySelector('#activePlayerCard'),
   activePosition: document.querySelector('#activePosition'),
   liveIndicator: document.querySelector('#liveIndicator'),
@@ -42,6 +55,9 @@ const elements = {
   rollBtn: document.querySelector('#rollBtn'),
   clearHistoryBtn: document.querySelector('#clearHistoryBtn'),
   rollHistory: document.querySelector('#rollHistory'),
+  clearStatsBtn: document.querySelector('#clearStatsBtn'),
+  histogramSummary: document.querySelector('#histogramSummary'),
+  histogram: document.querySelector('#histogram'),
 };
 
 const timerState = {
@@ -59,8 +75,12 @@ const diceState = {
   selected: 'd6',
   box: null,
   ready: false,
+  initializing: false,
   rolling: false,
   history: [],
+  stats: Object.fromEntries(
+    Object.entries(diceDefinitions).map(([type, definition]) => [type, Array(definition.sides + 1).fill(0)]),
+  ),
 };
 
 function createPlayers(count, existing = []) {
@@ -95,6 +115,24 @@ function escapeHtml(value) {
     .replaceAll('>', '&gt;')
     .replaceAll('"', '&quot;')
     .replaceAll("'", '&#039;');
+}
+
+function activateTool(tool, updateHash = true) {
+  const showDice = tool === 'dice';
+  elements.timerPanel.hidden = showDice;
+  elements.dicePanel.hidden = !showDice;
+  elements.timerTab.classList.toggle('selected', !showDice);
+  elements.diceTab.classList.toggle('selected', showDice);
+  elements.timerTab.setAttribute('aria-selected', String(!showDice));
+  elements.diceTab.setAttribute('aria-selected', String(showDice));
+  elements.timerTab.tabIndex = showDice ? -1 : 0;
+  elements.diceTab.tabIndex = showDice ? 0 : -1;
+
+  if (updateHash) history.replaceState(null, '', showDice ? '#dice' : '#timer');
+  if (showDice) {
+    if (!diceState.ready && !diceState.initializing) initializeDiceBox();
+    requestAnimationFrame(resizeDiceCanvas);
+  }
 }
 
 function syncPlayersFromEditor() {
@@ -158,9 +196,56 @@ function setPlayerCount(nextCount) {
   renderPlayerEditor();
 }
 
+function renderDuelTimer() {
+  const winnerIndex = timerState.gameOver ? timerState.activeIndex : -1;
+  elements.duelRound.textContent = timerState.gameOver
+    ? `${timerState.players[winnerIndex].name} 获胜`
+    : `第 ${timerState.round} 回合`;
+
+  timerState.players.forEach((player, index) => {
+    const isActive = index === timerState.activeIndex;
+    const button = elements.duelPlayers[index];
+    elements.duelNames[index].textContent = player.name;
+    elements.duelTimes[index].textContent = formatTime(player.remaining);
+    button.classList.toggle('active', isActive && !timerState.gameOver);
+    button.classList.toggle('eliminated', player.eliminated);
+    button.classList.toggle('winner', index === winnerIndex);
+    button.disabled = !timerState.running || !isActive || timerState.gameOver;
+
+    if (player.eliminated) {
+      elements.duelStatuses[index].textContent = '超时';
+    } else if (timerState.gameOver && index === winnerIndex) {
+      elements.duelStatuses[index].textContent = '获胜';
+    } else if (!timerState.started) {
+      elements.duelStatuses[index].textContent = isActive ? '先手' : '等待';
+    } else if (!timerState.running) {
+      elements.duelStatuses[index].textContent = isActive ? '已暂停' : '等待';
+    } else {
+      elements.duelStatuses[index].textContent = isActive ? '计时中' : '等待';
+    }
+  });
+
+  elements.duelPauseBtn.disabled = timerState.gameOver;
+  elements.duelPauseBtn.textContent = timerState.gameOver
+    ? '对局结束'
+    : !timerState.started
+      ? '开始计时'
+      : timerState.running
+        ? '暂停'
+        : '继续计时';
+}
+
 function renderTimer() {
   const active = timerState.players[timerState.activeIndex];
   if (!active) return;
+
+  const isDuel = timerState.players.length === 2;
+  elements.duelTimer.hidden = !isDuel;
+  elements.multiTimer.hidden = isDuel;
+  if (isDuel) {
+    renderDuelTimer();
+    return;
+  }
 
   elements.activeName.textContent = active.name;
   elements.activeTime.textContent = formatTime(active.remaining);
@@ -332,6 +417,7 @@ function selectedDiceDefinition() {
 
 function setSelectedDie(type) {
   if (!diceDefinitions[type] || diceState.rolling) return;
+  const changed = diceState.selected !== type;
   diceState.selected = type;
   const definition = selectedDiceDefinition();
   elements.diceSelector.querySelectorAll('[data-die]').forEach((button) => {
@@ -343,6 +429,64 @@ function setSelectedDie(type) {
   elements.rollDetail.textContent = type === 'd100'
     ? '百分骰 + d10 联投；双零计为 100'
     : `投掷 1 颗 ${definition.label}`;
+  if (changed) {
+    diceState.box?.clear();
+    elements.diceResult.textContent = '—';
+  }
+  renderHistogram();
+}
+
+function histogramBins(type) {
+  const counts = diceState.stats[type];
+  if (type === 'd100') {
+    return Array.from({ length: 10 }, (_, index) => {
+      const start = (index * 10) + 1;
+      const end = start + 9;
+      return {
+        label: `${start}–${end}`,
+        count: counts.slice(start, end + 1).reduce((sum, count) => sum + count, 0),
+      };
+    });
+  }
+  return Array.from({ length: diceDefinitions[type].sides }, (_, index) => ({
+    label: String(index + 1),
+    count: counts[index + 1],
+  }));
+}
+
+function renderHistogram() {
+  const type = diceState.selected;
+  const displayType = type === 'd100' ? 'd%' : type;
+  const bins = histogramBins(type);
+  const total = bins.reduce((sum, bin) => sum + bin.count, 0);
+  const maxCount = Math.max(1, ...bins.map((bin) => bin.count));
+  elements.histogramSummary.textContent = `${displayType} · ${total} 次投掷`;
+  elements.histogram.setAttribute('aria-label', `${displayType} 出数分布，共 ${total} 次投掷`);
+  elements.histogram.style.gridTemplateColumns = `repeat(${bins.length}, minmax(0, 1fr))`;
+  elements.histogram.innerHTML = bins
+    .map((bin) => {
+      const percentage = total ? (bin.count / total) * 100 : 0;
+      const height = bin.count ? Math.max(4, (bin.count / maxCount) * 100) : 0;
+      return `
+        <div class="histogram-bar" title="${escapeHtml(bin.label)}：${bin.count} 次（${percentage.toFixed(1)}%）">
+          <div class="histogram-track">
+            <div class="histogram-fill" style="height: ${height}%">
+              <span>${bin.count ? `${percentage.toFixed(0)}%` : ''}</span>
+            </div>
+          </div>
+          <span class="histogram-label">${escapeHtml(bin.label)}</span>
+        </div>
+      `;
+    })
+    .join('');
+}
+
+function recordDiceResult(type, value) {
+  const safeValue = Math.round(Number(value));
+  if (safeValue >= 1 && safeValue < diceState.stats[type].length) {
+    diceState.stats[type][safeValue] += 1;
+  }
+  renderHistogram();
 }
 
 function randomInteger(max) {
@@ -407,6 +551,7 @@ function addRollHistory(type, result) {
     detail: result.detail,
   });
   diceState.history = diceState.history.slice(0, 6);
+  recordDiceResult(type, result.value);
   renderRollHistory();
 }
 
@@ -439,6 +584,7 @@ async function rollDice() {
     if (diceState.ready && diceState.box) {
       const rawResults = await diceState.box.roll(diceDefinitions[type].notation);
       result = physicalResult(type, rawResults);
+      sharpenDiceCanvas();
     } else {
       elements.fallbackDie.hidden = false;
       elements.fallbackDie.classList.remove('rolling');
@@ -463,7 +609,25 @@ async function rollDice() {
   elements.rollBtn.textContent = '抛骰子';
 }
 
+function sharpenDiceCanvas() {
+  const canvas = elements.diceStage.querySelector('canvas');
+  if (!canvas) return;
+  const ratio = Math.min(window.devicePixelRatio || 1, 2.5);
+  const width = Math.round(elements.diceStage.clientWidth * ratio);
+  const height = Math.round(elements.diceStage.clientHeight * ratio);
+  if (canvas.width !== width) canvas.width = width;
+  if (canvas.height !== height) canvas.height = height;
+}
+
+function resizeDiceCanvas() {
+  if (!diceState.ready || !diceState.box || elements.dicePanel.hidden) return;
+  diceState.box.resizeWorld();
+  requestAnimationFrame(sharpenDiceCanvas);
+}
+
 async function initializeDiceBox() {
+  if (diceState.initializing || diceState.ready) return;
+  diceState.initializing = true;
   try {
     const module = await import('https://unpkg.com/@3d-dice/dice-box@1.1.4/dist/dice-box.es.min.js');
     const DiceBox = module.default;
@@ -471,9 +635,10 @@ async function initializeDiceBox() {
       container: '#diceStage',
       assetPath: 'assets/',
       origin: 'https://unpkg.com/@3d-dice/dice-box@1.1.4/dist/',
+      offscreen: false,
       theme: 'default',
       themeColor: '#c94736',
-      scale: 5.4,
+      scale: 8.5,
       gravity: 1.15,
       mass: 1,
       friction: 0.8,
@@ -485,7 +650,9 @@ async function initializeDiceBox() {
     diceState.box = box;
     diceState.ready = true;
     elements.diceLoading.hidden = true;
+    resizeDiceCanvas();
     await box.roll('1d6');
+    sharpenDiceCanvas();
     elements.diceResult.textContent = '—';
   } catch (error) {
     console.warn('3D 骰子不可用，已启用本地随机动画。', error);
@@ -494,6 +661,8 @@ async function initializeDiceBox() {
       elements.diceLoading.hidden = true;
       elements.fallbackDie.hidden = false;
     }, 800);
+  } finally {
+    diceState.initializing = false;
   }
 }
 
@@ -505,6 +674,12 @@ elements.playersEditor.addEventListener('input', () => {
 });
 elements.startGameBtn.addEventListener('click', beginGame);
 elements.timerSettingsBtn.addEventListener('click', returnToSettings);
+elements.duelPauseBtn.addEventListener('click', startOrPauseTimer);
+elements.duelPlayers.forEach((button, index) => {
+  button.addEventListener('click', () => {
+    if (timerState.activeIndex === index) completeTurn('manual');
+  });
+});
 elements.pauseBtn.addEventListener('click', startOrPauseTimer);
 elements.nextTurnBtn.addEventListener('click', () => completeTurn('manual'));
 elements.activePlayerCard.addEventListener('click', () => completeTurn('manual'));
@@ -530,6 +705,26 @@ elements.clearHistoryBtn.addEventListener('click', () => {
   elements.diceResult.textContent = '—';
   renderRollHistory();
 });
+elements.clearStatsBtn.addEventListener('click', () => {
+  diceState.stats[diceState.selected].fill(0);
+  renderHistogram();
+});
+
+elements.toolTabs.addEventListener('click', (event) => {
+  const tab = event.target.closest('[data-tool]');
+  if (tab) activateTool(tab.dataset.tool);
+});
+
+elements.toolTabs.addEventListener('keydown', (event) => {
+  if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
+  event.preventDefault();
+  const nextTool = elements.dicePanel.hidden ? 'dice' : 'timer';
+  activateTool(nextTool);
+  (nextTool === 'dice' ? elements.diceTab : elements.timerTab).focus();
+});
+
+window.addEventListener('hashchange', () => activateTool(location.hash === '#dice' ? 'dice' : 'timer', false));
+window.addEventListener('resize', resizeDiceCanvas);
 
 document.addEventListener('visibilitychange', () => {
   if (document.hidden && timerState.running) startOrPauseTimer();
@@ -537,4 +732,4 @@ document.addEventListener('visibilitychange', () => {
 
 renderPlayerEditor();
 setSelectedDie('d6');
-initializeDiceBox();
+activateTool(location.hash === '#dice' ? 'dice' : 'timer', false);

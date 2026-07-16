@@ -16,11 +16,22 @@
           <p class="eyebrow">TABLETOP UTILITY</p>
           <h1>回合桌</h1>
         </div>
-        <p class="topbar-note">多人计时与物理骰子</p>
+        <p class="topbar-note">桌游工具主页</p>
       </header>
 
+      <nav class="tool-tabs" role="tablist" aria-label="桌游工具">
+        <button class="tool-tab selected" id="timerTab" type="button" role="tab" aria-selected="true" aria-controls="timerPanel" data-tool="timer">
+          <span>01</span>
+          回合计时
+        </button>
+        <button class="tool-tab" id="diceTab" type="button" role="tab" aria-selected="false" aria-controls="dicePanel" data-tool="dice">
+          <span>02</span>
+          物理骰子
+        </button>
+      </nav>
+
       <div class="workspace">
-        <section class="timer-workspace" aria-labelledby="timerTitle">
+        <section class="timer-workspace tool-panel" id="timerPanel" role="tabpanel" aria-labelledby="timerTab">
           <div class="section-heading">
             <div>
               <p class="section-index">01 / TURN TIMER</p>
@@ -53,27 +64,52 @@
           </div>
 
           <div class="timer-game" id="timerGame" hidden>
-            <div class="active-player" id="activePlayerCard" role="button" tabindex="0" aria-label="结束当前回合">
-              <div class="active-topline">
-                <span id="activePosition">玩家 1 · 第 1 回合</span>
-                <span class="live-indicator" id="liveIndicator">待开始</span>
+            <div class="duel-timer" id="duelTimer" hidden>
+              <button class="duel-player duel-player-top" id="duelPlayer0" type="button" data-duel-player="0">
+                <span class="duel-player-inner">
+                  <span class="duel-meta"><span id="duelName0">玩家 1</span><span id="duelStatus0">等待</span></span>
+                  <time id="duelTime0">05:00</time>
+                  <span class="duel-action">完成回合，交给对方</span>
+                </span>
+              </button>
+
+              <div class="duel-center">
+                <p id="duelRound">第 1 回合</p>
+                <button class="secondary-button" id="duelPauseBtn" type="button">开始计时</button>
               </div>
-              <p class="active-name" id="activeName">玩家 1</p>
-              <time class="active-time" id="activeTime">05:00</time>
-              <p class="tap-hint">点击此区域结束回合</p>
+
+              <button class="duel-player duel-player-bottom" id="duelPlayer1" type="button" data-duel-player="1">
+                <span class="duel-player-inner">
+                  <span class="duel-meta"><span id="duelName1">玩家 2</span><span id="duelStatus1">等待</span></span>
+                  <time id="duelTime1">05:00</time>
+                  <span class="duel-action">完成回合，交给对方</span>
+                </span>
+              </button>
             </div>
 
-            <div class="player-strip" id="playerStrip" role="group" aria-label="玩家计时概览"></div>
+            <div class="multi-timer" id="multiTimer" hidden>
+              <div class="active-player" id="activePlayerCard" role="button" tabindex="0" aria-label="结束当前回合">
+                <div class="active-topline">
+                  <span id="activePosition">玩家 1 · 第 1 回合</span>
+                  <span class="live-indicator" id="liveIndicator">待开始</span>
+                </div>
+                <p class="active-name" id="activeName">玩家 1</p>
+                <time class="active-time" id="activeTime">05:00</time>
+                <p class="tap-hint">点击此区域结束回合</p>
+              </div>
 
-            <div class="timer-controls">
-              <button class="secondary-button" id="pauseBtn" type="button">开始计时</button>
-              <button class="primary-button next-button" id="nextTurnBtn" type="button" disabled>下一位</button>
+              <div class="player-strip" id="playerStrip" role="group" aria-label="玩家计时概览"></div>
+
+              <div class="timer-controls">
+                <button class="secondary-button" id="pauseBtn" type="button">开始计时</button>
+                <button class="primary-button next-button" id="nextTurnBtn" type="button" disabled>下一位</button>
+              </div>
+              <p class="timer-status" id="timerStatus" aria-live="polite">设置完成，等待开始计时</p>
             </div>
-            <p class="timer-status" id="timerStatus" aria-live="polite">设置完成，等待开始计时</p>
           </div>
         </section>
 
-        <section class="dice-workspace" aria-labelledby="diceTitle">
+        <section class="dice-workspace tool-panel" id="dicePanel" role="tabpanel" aria-labelledby="diceTab" hidden>
           <div class="section-heading">
             <div>
               <p class="section-index">02 / DICE TRAY</p>
@@ -116,6 +152,17 @@
             <ol class="roll-history" id="rollHistory">
               <li class="empty-history">还没有投掷记录</li>
             </ol>
+          </div>
+
+          <div class="distribution-block">
+            <div class="distribution-heading">
+              <div>
+                <span>出数分布</span>
+                <strong id="histogramSummary">d6 · 0 次投掷</strong>
+              </div>
+              <button id="clearStatsBtn" type="button">重置当前骰子</button>
+            </div>
+            <div class="histogram" id="histogram" role="img" aria-label="d6 出数分布"></div>
           </div>
         </section>
       </div>
