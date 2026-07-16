@@ -17,8 +17,10 @@ const elements = {
   toolTabs: document.querySelector('.tool-tabs'),
   timerTab: document.querySelector('#timerTab'),
   diceTab: document.querySelector('#diceTab'),
+  randomTab: document.querySelector('#randomTab'),
   timerPanel: document.querySelector('#timerPanel'),
   dicePanel: document.querySelector('#dicePanel'),
+  randomPanel: document.querySelector('#randomPanel'),
   timerSetup: document.querySelector('#timerSetup'),
   timerGame: document.querySelector('#timerGame'),
   timerSettingsBtn: document.querySelector('#timerSettingsBtn'),
@@ -58,6 +60,18 @@ const elements = {
   clearStatsBtn: document.querySelector('#clearStatsBtn'),
   histogramSummary: document.querySelector('#histogramSummary'),
   histogram: document.querySelector('#histogram'),
+  randomMin: document.querySelector('#randomMin'),
+  randomMax: document.querySelector('#randomMax'),
+  randomResult: document.querySelector('#randomResult'),
+  randomStage: document.querySelector('#randomStage'),
+  randomStageValue: document.querySelector('#randomStageValue'),
+  randomRangeLabel: document.querySelector('#randomRangeLabel'),
+  generateRandomBtn: document.querySelector('#generateRandomBtn'),
+  randomHistory: document.querySelector('#randomHistory'),
+  clearRandomHistoryBtn: document.querySelector('#clearRandomHistoryBtn'),
+  randomHistogramSummary: document.querySelector('#randomHistogramSummary'),
+  randomHistogram: document.querySelector('#randomHistogram'),
+  clearRandomStatsBtn: document.querySelector('#clearRandomStatsBtn'),
 };
 
 const timerState = {
@@ -81,6 +95,13 @@ const diceState = {
   stats: Object.fromEntries(
     Object.entries(diceDefinitions).map(([type, definition]) => [type, Array(definition.sides + 1).fill(0)]),
   ),
+};
+
+const randomState = {
+  min: 1,
+  max: 100,
+  counts: new Map(),
+  history: [],
 };
 
 function createPlayers(count, existing = []) {
@@ -118,18 +139,22 @@ function escapeHtml(value) {
 }
 
 function activateTool(tool, updateHash = true) {
-  const showDice = tool === 'dice';
-  elements.timerPanel.hidden = showDice;
-  elements.dicePanel.hidden = !showDice;
-  elements.timerTab.classList.toggle('selected', !showDice);
-  elements.diceTab.classList.toggle('selected', showDice);
-  elements.timerTab.setAttribute('aria-selected', String(!showDice));
-  elements.diceTab.setAttribute('aria-selected', String(showDice));
-  elements.timerTab.tabIndex = showDice ? -1 : 0;
-  elements.diceTab.tabIndex = showDice ? 0 : -1;
+  const activeTool = ['timer', 'dice', 'random'].includes(tool) ? tool : 'timer';
+  const tools = [
+    { name: 'timer', tab: elements.timerTab, panel: elements.timerPanel },
+    { name: 'dice', tab: elements.diceTab, panel: elements.dicePanel },
+    { name: 'random', tab: elements.randomTab, panel: elements.randomPanel },
+  ];
+  tools.forEach(({ name, tab, panel }) => {
+    const active = name === activeTool;
+    panel.hidden = !active;
+    tab.classList.toggle('selected', active);
+    tab.setAttribute('aria-selected', String(active));
+    tab.tabIndex = active ? 0 : -1;
+  });
 
-  if (updateHash) history.replaceState(null, '', showDice ? '#dice' : '#timer');
-  if (showDice) {
+  if (updateHash) history.replaceState(null, '', `#${activeTool}`);
+  if (activeTool === 'dice') {
     if (!diceState.ready && !diceState.initializing) initializeDiceBox();
     requestAnimationFrame(resizeDiceCanvas);
   }
@@ -489,6 +514,105 @@ function recordDiceResult(type, value) {
   renderHistogram();
 }
 
+function clampRandomBound(value, fallback) {
+  const parsed = Math.round(Number(value));
+  if (!Number.isFinite(parsed)) return fallback;
+  return Math.min(1000000, Math.max(-1000000, parsed));
+}
+
+function syncRandomRange() {
+  let min = clampRandomBound(elements.randomMin.value, randomState.min);
+  let max = clampRandomBound(elements.randomMax.value, randomState.max);
+  if (min > max) [min, max] = [max, min];
+  elements.randomMin.value = String(min);
+  elements.randomMax.value = String(max);
+
+  const changed = min !== randomState.min || max !== randomState.max;
+  randomState.min = min;
+  randomState.max = max;
+  elements.randomRangeLabel.textContent = `${min}–${max}`;
+  if (changed) {
+    randomState.counts.clear();
+    randomState.history = [];
+    elements.randomResult.textContent = '—';
+    elements.randomStageValue.textContent = '—';
+    renderRandomHistory();
+  }
+  renderRandomHistogram();
+}
+
+function randomHistogramBins() {
+  const range = randomState.max - randomState.min + 1;
+  const binSize = range <= 20 ? 1 : Math.ceil(range / 20);
+  const bins = [];
+  for (let start = randomState.min; start <= randomState.max; start += binSize) {
+    const end = Math.min(randomState.max, start + binSize - 1);
+    let count = 0;
+    randomState.counts.forEach((valueCount, value) => {
+      if (value >= start && value <= end) count += valueCount;
+    });
+    bins.push({ label: start === end ? String(start) : `${start}–${end}`, count });
+  }
+  return bins;
+}
+
+function renderRandomHistogram() {
+  const bins = randomHistogramBins();
+  const total = bins.reduce((sum, bin) => sum + bin.count, 0);
+  const maxCount = Math.max(1, ...bins.map((bin) => bin.count));
+  const rangeLabel = `${randomState.min}–${randomState.max}`;
+  elements.randomHistogramSummary.textContent = `${rangeLabel} · ${total} 次生成`;
+  elements.randomHistogram.setAttribute('aria-label', `${rangeLabel} 随机数分布，共 ${total} 次生成`);
+  elements.randomHistogram.style.gridTemplateColumns = `repeat(${bins.length}, minmax(0, 1fr))`;
+  elements.randomHistogram.innerHTML = bins
+    .map((bin) => {
+      const percentage = total ? (bin.count / total) * 100 : 0;
+      const height = bin.count ? Math.max(4, (bin.count / maxCount) * 100) : 0;
+      return `
+        <div class="histogram-bar" title="${escapeHtml(bin.label)}：${bin.count} 次（${percentage.toFixed(1)}%）">
+          <div class="histogram-track">
+            <div class="histogram-fill" style="height: ${height}%">
+              <span>${bin.count ? `${percentage.toFixed(0)}%` : ''}</span>
+            </div>
+          </div>
+          <span class="histogram-label">${escapeHtml(bin.label)}</span>
+        </div>
+      `;
+    })
+    .join('');
+}
+
+function renderRandomHistory() {
+  if (!randomState.history.length) {
+    elements.randomHistory.innerHTML = '<li class="empty-history">还没有随机数记录</li>';
+    return;
+  }
+  elements.randomHistory.innerHTML = randomState.history
+    .map((value) => `
+      <li>
+        <span class="history-type">随机数</span>
+        <strong class="history-value">${value}</strong>
+      </li>
+    `)
+    .join('');
+}
+
+function generateRandomNumber() {
+  syncRandomRange();
+  const range = randomState.max - randomState.min + 1;
+  const value = randomState.min + randomInteger(range) - 1;
+  randomState.counts.set(value, (randomState.counts.get(value) ?? 0) + 1);
+  randomState.history.unshift(value);
+  randomState.history = randomState.history.slice(0, 10);
+  elements.randomResult.textContent = String(value);
+  elements.randomStageValue.textContent = String(value);
+  elements.randomStage.classList.remove('generating');
+  void elements.randomStage.offsetWidth;
+  elements.randomStage.classList.add('generating');
+  renderRandomHistory();
+  renderRandomHistogram();
+}
+
 function randomInteger(max) {
   if (crypto.getRandomValues) {
     const range = 0x100000000;
@@ -709,6 +833,16 @@ elements.clearStatsBtn.addEventListener('click', () => {
   diceState.stats[diceState.selected].fill(0);
   renderHistogram();
 });
+elements.generateRandomBtn.addEventListener('click', generateRandomNumber);
+elements.randomStage.addEventListener('click', generateRandomNumber);
+elements.clearRandomHistoryBtn.addEventListener('click', () => {
+  randomState.history = [];
+  renderRandomHistory();
+});
+elements.clearRandomStatsBtn.addEventListener('click', () => {
+  randomState.counts.clear();
+  renderRandomHistogram();
+});
 
 elements.toolTabs.addEventListener('click', (event) => {
   const tab = event.target.closest('[data-tool]');
@@ -718,12 +852,15 @@ elements.toolTabs.addEventListener('click', (event) => {
 elements.toolTabs.addEventListener('keydown', (event) => {
   if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
   event.preventDefault();
-  const nextTool = elements.dicePanel.hidden ? 'dice' : 'timer';
+  const tools = ['timer', 'dice', 'random'];
+  const currentTool = tools.find((tool) => !elements[`${tool}Panel`].hidden) ?? 'timer';
+  const direction = event.key === 'ArrowRight' ? 1 : -1;
+  const nextTool = tools[(tools.indexOf(currentTool) + direction + tools.length) % tools.length];
   activateTool(nextTool);
-  (nextTool === 'dice' ? elements.diceTab : elements.timerTab).focus();
+  elements[`${nextTool}Tab`].focus();
 });
 
-window.addEventListener('hashchange', () => activateTool(location.hash === '#dice' ? 'dice' : 'timer', false));
+window.addEventListener('hashchange', () => activateTool(location.hash.slice(1), false));
 window.addEventListener('resize', resizeDiceCanvas);
 
 document.addEventListener('visibilitychange', () => {
@@ -732,4 +869,5 @@ document.addEventListener('visibilitychange', () => {
 
 renderPlayerEditor();
 setSelectedDie('d6');
-activateTool(location.hash === '#dice' ? 'dice' : 'timer', false);
+renderRandomHistogram();
+activateTool(location.hash.slice(1), false);

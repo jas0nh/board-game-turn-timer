@@ -147,7 +147,8 @@ select:focus-visible,
 }
 
 .timer-workspace,
-.dice-workspace {
+.dice-workspace,
+.random-workspace {
   width: 100%;
   min-width: 0;
   margin: 0 auto;
@@ -160,6 +161,10 @@ select:focus-visible,
 
 .dice-workspace {
   max-width: 1160px;
+}
+
+.random-workspace {
+  max-width: 960px;
 }
 
 .section-heading {
@@ -871,6 +876,73 @@ select:focus-visible,
   white-space: nowrap;
 }
 
+.random-controls {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: end;
+  padding: 18px 0;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+}
+
+.random-controls label {
+  display: grid;
+  gap: 7px;
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.random-controls input {
+  width: 100%;
+  height: 46px;
+  padding: 0 13px;
+  border: 1px solid var(--line);
+  border-radius: 2px;
+  background: var(--surface);
+  color: var(--ink);
+  font-family: "SF Mono", "Roboto Mono", ui-monospace, monospace;
+  font-size: 14px;
+}
+
+.random-stage {
+  width: 100%;
+  min-height: 310px;
+  display: grid;
+  place-content: center;
+  gap: 14px;
+  margin-top: 20px;
+  border: 1px solid var(--ink);
+  background: var(--ink);
+  color: #fff;
+  text-align: center;
+}
+
+.random-stage strong {
+  max-width: 100%;
+  font-family: "SF Mono", "Roboto Mono", ui-monospace, monospace;
+  font-size: clamp(74px, 14vw, 150px);
+  font-weight: 500;
+  line-height: 0.9;
+  overflow-wrap: anywhere;
+  font-variant-numeric: tabular-nums;
+}
+
+.random-stage > span {
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.random-stage.generating strong {
+  animation: number-pulse 180ms ease 2;
+}
+
+@keyframes number-pulse {
+  50% { opacity: 0.35; transform: scale(0.96); }
+}
+
 @keyframes reveal {
   from { opacity: 0; transform: translateY(8px); }
   to { opacity: 1; transform: translateY(0); }
@@ -923,10 +995,18 @@ select:focus-visible,
   .tool-tab {
     flex: 1;
     min-width: 0;
+    font-size: 12px;
+    text-align: center;
+  }
+
+  .tool-tab span {
+    display: block;
+    margin: 0 0 3px;
   }
 
   .timer-workspace,
-  .dice-workspace {
+  .dice-workspace,
+  .random-workspace {
     padding: 22px 0;
   }
 
@@ -1001,6 +1081,22 @@ select:focus-visible,
 
   .histogram-label {
     font-size: 8px;
+  }
+
+  .random-controls {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .random-controls .primary-button {
+    grid-column: 1 / -1;
+  }
+
+  .random-stage {
+    min-height: 260px;
+  }
+
+  .random-stage strong {
+    font-size: clamp(64px, 23vw, 94px);
   }
 }
 

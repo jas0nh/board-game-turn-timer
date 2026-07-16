@@ -4,8 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="theme-color" content="#f4f1ea">
-    <meta name="description" content="支持 2–8 人回合计时与 D&D 物理骰子的桌游工具。">
-    <title>回合桌 · 多人计时与物理骰子</title>
+    <meta name="description" content="支持多人回合计时、D&D 物理骰子与区间随机数的桌游工具。">
+    <title>回合桌 · 桌游工具</title>
     <link rel="icon" href="favicon.svg" type="image/svg+xml">
     <link rel="stylesheet" href="styles.css">
   </head>
@@ -27,6 +27,10 @@
         <button class="tool-tab" id="diceTab" type="button" role="tab" aria-selected="false" aria-controls="dicePanel" data-tool="dice">
           <span>02</span>
           物理骰子
+        </button>
+        <button class="tool-tab" id="randomTab" type="button" role="tab" aria-selected="false" aria-controls="randomPanel" data-tool="random">
+          <span>03</span>
+          随机数
         </button>
       </nav>
 
@@ -163,6 +167,58 @@
               <button id="clearStatsBtn" type="button">重置当前骰子</button>
             </div>
             <div class="histogram" id="histogram" role="img" aria-label="d6 出数分布"></div>
+          </div>
+        </section>
+
+        <section class="random-workspace tool-panel" id="randomPanel" role="tabpanel" aria-labelledby="randomTab" hidden>
+          <div class="section-heading">
+            <div>
+              <p class="section-index">03 / RANDOM NUMBER</p>
+              <h2>简单随机数</h2>
+            </div>
+            <div class="dice-total" aria-live="polite">
+              <span>结果</span>
+              <strong id="randomResult">—</strong>
+            </div>
+          </div>
+
+          <div class="random-controls">
+            <label>
+              下限
+              <input id="randomMin" type="number" inputmode="numeric" min="-1000000" max="1000000" step="1" value="1">
+            </label>
+            <label>
+              上限
+              <input id="randomMax" type="number" inputmode="numeric" min="-1000000" max="1000000" step="1" value="100">
+            </label>
+            <button class="primary-button" id="generateRandomBtn" type="button">生成随机数</button>
+          </div>
+
+          <button class="random-stage" id="randomStage" type="button" aria-label="生成随机数">
+            <span class="random-range-label" id="randomRangeLabel">1–100</span>
+            <strong id="randomStageValue">—</strong>
+            <span>点击生成</span>
+          </button>
+
+          <div class="history-block">
+            <div class="history-heading">
+              <span>最近结果</span>
+              <button id="clearRandomHistoryBtn" type="button">清空</button>
+            </div>
+            <ol class="roll-history" id="randomHistory">
+              <li class="empty-history">还没有随机数记录</li>
+            </ol>
+          </div>
+
+          <div class="distribution-block">
+            <div class="distribution-heading">
+              <div>
+                <span>随机数分布</span>
+                <strong id="randomHistogramSummary">1–100 · 0 次生成</strong>
+              </div>
+              <button id="clearRandomStatsBtn" type="button">重置分布</button>
+            </div>
+            <div class="histogram random-histogram" id="randomHistogram" role="img" aria-label="1 到 100 随机数分布"></div>
           </div>
         </section>
       </div>
