@@ -1,488 +1,126 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="zh-CN">
   <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    <title>双人回合计时器</title>
-    <link rel="icon" href="favicon.svg" type="image/svg+xml" />
-    <style>
-      :root {
-        --bg-1: #eaf1fb;
-        --bg-2: #d7e4f7;
-        --panel: rgba(255, 255, 255, 0.96);
-        --text: #1a2330;
-        --ok: #2f6f95;
-      }
-
-      * {
-        box-sizing: border-box;
-        -webkit-tap-highlight-color: transparent;
-      }
-
-      html,
-      body {
-        margin: 0;
-        min-height: 100%;
-        background: radial-gradient(110% 130% at 50% 0%, var(--bg-2), var(--bg-1));
-        color: var(--text);
-        font-family: "Noto Sans SC", "PingFang SC", "Microsoft YaHei", "Helvetica Neue", sans-serif;
-        touch-action: manipulation;
-        user-select: none;
-      }
-
-      .app {
-        min-height: 100vh;
-        max-width: 680px;
-        margin: 0 auto;
-        padding: 12px;
-        display: flex;
-        flex-direction: column;
-      }
-
-      .screen {
-        display: none;
-        min-height: 100%;
-        flex-direction: column;
-        gap: 10px;
-      }
-
-      .screen.active {
-        display: flex;
-      }
-
-      .setup {
-        justify-content: center;
-        padding: 12px;
-      }
-
-      .setup .card {
-        background: var(--panel);
-        border: 2px solid rgba(0, 0, 0, 0.08);
-        border-radius: 14px;
-        box-shadow: 0 8px 24px rgba(18, 33, 53, 0.14);
-        padding: 14px;
-      }
-
-      .title {
-        margin: 0 0 8px;
-        font-size: 20px;
-      }
-
-      .desc {
-        margin: 0 0 14px;
-        color: #4b586e;
-        font-size: 13px;
-      }
-
-      .labels {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 8px;
-        font-size: 12px;
-        font-weight: 700;
-        margin-bottom: 8px;
-      }
-
-      .inputs {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 8px;
-      }
-
-      .time-input {
-        width: 100%;
-        height: 44px;
-        border-radius: 10px;
-        border: 1px solid rgba(0, 0, 0, 0.2);
-        padding: 0 12px;
-        font-size: 14px;
-        background: #fff;
-      }
-
-      .enter-btn {
-        margin-top: 12px;
-        width: 100%;
-        height: 46px;
-        border: 0;
-        border-radius: 12px;
-        color: #fff;
-        font-weight: 700;
-        background: linear-gradient(130deg, var(--ok), #4a86bd);
-        box-shadow: 0 8px 16px rgba(47, 111, 149, 0.28);
-      }
-
-      .timer {
-        justify-content: center;
-        gap: 10px;
-      }
-
-      .layout {
-        flex: 1;
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
-        gap: 10px;
-      }
-
-      .header {
-        background: var(--panel);
-        border: 2px solid rgba(0, 0, 0, 0.08);
-        border-radius: 14px;
-        padding: 12px;
-        text-align: center;
-        box-shadow: 0 8px 24px rgba(18, 33, 53, 0.14);
-      }
-
-      .status {
-        margin-top: 6px;
-        font-size: 14px;
-        font-weight: 700;
-        min-height: 24px;
-      }
-
-      .time-card {
-        border: 2px solid rgba(0, 0, 0, 0.08);
-        border-radius: 14px;
-        padding: 10px;
-        background: var(--panel);
-        box-shadow: 0 8px 18px rgba(18, 33, 53, 0.12);
-      }
-
-      .time-card .card-inner {
-        display: flex;
-        flex-direction: column;
-        gap: 8px;
-      }
-
-      .time-card.turn {
-        border-color: rgba(47, 111, 149, 0.5);
-        box-shadow: 0 12px 24px rgba(42, 88, 131, 0.2);
-      }
-
-      .mirror .card-inner {
-        transform: rotate(180deg);
-      }
-
-      .row {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        font-size: 12px;
-        font-weight: 700;
-      }
-
-      .time {
-        text-align: center;
-        font-size: 48px;
-        font-weight: 700;
-        letter-spacing: 0.03em;
-        font-variant-numeric: tabular-nums;
-        line-height: 1;
-      }
-
-      button {
-        border: 0;
-        border-radius: 11px;
-        font-weight: 700;
-      }
-
-      .timer-btn {
-        align-self: stretch;
-        height: 46px;
-        color: #fff;
-        background: linear-gradient(130deg, #2f6f95, #4f8fc2);
-      }
-
-      .timer-btn[disabled] {
-        opacity: 0.45;
-        cursor: not-allowed;
-        filter: grayscale(0.2);
-      }
-
-      .controls {
-        display: flex;
-        gap: 8px;
-      }
-
-      .btn-ghost {
-        flex: 1;
-        background: #dce6f1;
-        height: 42px;
-        border: 1px solid rgba(0, 0, 0, 0.12);
-      }
-
-      .btn-primary {
-        flex: 2;
-        color: #fff;
-        background: linear-gradient(130deg, var(--ok), #4a86bd);
-        height: 42px;
-        box-shadow: 0 8px 16px rgba(47, 111, 149, 0.28);
-      }
-    </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#f4f1ea">
+    <meta name="description" content="支持 2–8 人回合计时与 D&D 物理骰子的桌游工具。">
+    <title>回合桌 · 多人计时与物理骰子</title>
+    <link rel="icon" href="favicon.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="styles.css">
   </head>
   <body>
-    <div class="app">
-      <section class="screen setup active" id="setupScreen">
-        <div class="card">
-          <h1 class="title">开始新对局</h1>
-          <p class="desc">每次刷新会重置所有状态，先设置每方总时长后进入计时界面。</p>
-          <div class="labels">
-            <label for="minutesA">A 方总时间（秒）</label>
-            <label for="minutesB">B 方总时间（秒）</label>
-          </div>
-          <div class="inputs">
-            <input class="time-input" id="minutesA" type="number" min="10" max="3600" value="300" />
-            <input class="time-input" id="minutesB" type="number" min="10" max="3600" value="300" />
-          </div>
-          <button class="enter-btn" id="startSetupBtn">进入计时</button>
+    <main class="app-shell">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">TABLETOP UTILITY</p>
+          <h1>回合桌</h1>
         </div>
-      </section>
+        <p class="topbar-note">多人计时与物理骰子</p>
+      </header>
 
-      <section class="screen timer" id="timerScreen">
-        <div class="layout">
-          <section class="time-card mirror" id="playerA">
-            <div class="card-inner">
-              <div class="row">
-                <span>A 方（上方）</span>
-                <span id="statusA">等待中</span>
-              </div>
-              <div class="time" id="timeA">05:00</div>
-              <button class="timer-btn" id="turnA" disabled>A 方已下完，换到 B 方</button>
+      <div class="workspace">
+        <section class="timer-workspace" aria-labelledby="timerTitle">
+          <div class="section-heading">
+            <div>
+              <p class="section-index">01 / TURN TIMER</p>
+              <h2 id="timerTitle">多人回合计时</h2>
             </div>
-          </section>
-
-          <section class="header">
-            <div class="status" id="status">点“开始”后开始计时</div>
-          </section>
-
-          <section class="time-card" id="playerB">
-            <div class="card-inner">
-              <div class="row">
-                <span>B 方（下方）</span>
-                <span id="statusB">等待中</span>
-              </div>
-              <div class="time" id="timeB">05:00</div>
-              <button class="timer-btn" id="turnB">B 方已下完，换到 A 方</button>
-            </div>
-          </section>
-
-          <div class="controls">
-            <button class="btn-ghost" id="pauseBtn">开始</button>
-            <button class="btn-primary" id="resetBtn">重置并返回设置</button>
+            <button class="icon-button" id="timerSettingsBtn" type="button" aria-label="计时设置" title="计时设置">
+              <span aria-hidden="true">⚙</span>
+            </button>
           </div>
-        </div>
-      </section>
-    </div>
 
-    <script>
-      const setupScreen = document.getElementById('setupScreen');
-      const timerScreen = document.getElementById('timerScreen');
-      const startSetupBtn = document.getElementById('startSetupBtn');
-      const timeAEl = document.getElementById('timeA');
-      const timeBEl = document.getElementById('timeB');
-      const statusA = document.getElementById('statusA');
-      const statusB = document.getElementById('statusB');
-      const statusEl = document.getElementById('status');
-      const turnA = document.getElementById('turnA');
-      const turnB = document.getElementById('turnB');
-      const pauseBtn = document.getElementById('pauseBtn');
-      const resetBtn = document.getElementById('resetBtn');
-      const inputA = document.getElementById('minutesA');
-      const inputB = document.getElementById('minutesB');
-      const cardA = document.getElementById('playerA');
-      const cardB = document.getElementById('playerB');
+          <div class="timer-setup" id="timerSetup">
+            <div class="setup-row">
+              <span>玩家人数</span>
+              <div class="stepper" role="group" aria-label="玩家人数">
+                <button id="removePlayerBtn" type="button" aria-label="减少玩家">−</button>
+                <output id="playerCount" aria-live="polite">2</output>
+                <button id="addPlayerBtn" type="button" aria-label="增加玩家">＋</button>
+              </div>
+            </div>
 
-      const MIN_SECONDS = 10;
-      const MAX_SECONDS = 3600;
+            <div class="players-editor" id="playersEditor"></div>
 
-      const state = {
-        remaining: { a: 300, b: 300 },
-        currentTurn: 'a',
-        running: false,
-        paused: false,
-        over: false,
-        raf: null,
-        lastTickAt: null,
-        winnerMessage: '',
-      };
+            <div class="setup-actions">
+              <label class="start-player-label" for="startPlayerSelect">
+                首位玩家
+                <select id="startPlayerSelect"></select>
+              </label>
+              <button class="primary-button" id="startGameBtn" type="button">开始对局</button>
+            </div>
+          </div>
 
-      function showSetupScreen() {
-        timerScreen.classList.remove('active');
-        setupScreen.classList.add('active');
-      }
+          <div class="timer-game" id="timerGame" hidden>
+            <div class="active-player" id="activePlayerCard" role="button" tabindex="0" aria-label="结束当前回合">
+              <div class="active-topline">
+                <span id="activePosition">玩家 1 · 第 1 回合</span>
+                <span class="live-indicator" id="liveIndicator">待开始</span>
+              </div>
+              <p class="active-name" id="activeName">玩家 1</p>
+              <time class="active-time" id="activeTime">05:00</time>
+              <p class="tap-hint">点击此区域结束回合</p>
+            </div>
 
-      function showTimerScreen() {
-        setupScreen.classList.remove('active');
-        timerScreen.classList.add('active');
-      }
+            <div class="player-strip" id="playerStrip" role="group" aria-label="玩家计时概览"></div>
 
-      function parseDuration(value) {
-        const parsed = Number(value);
-        if (Number.isFinite(parsed) && parsed >= MIN_SECONDS && parsed <= MAX_SECONDS) {
-          return Math.floor(parsed);
-        }
-        return 300;
-      }
+            <div class="timer-controls">
+              <button class="secondary-button" id="pauseBtn" type="button">开始计时</button>
+              <button class="primary-button next-button" id="nextTurnBtn" type="button" disabled>下一位</button>
+            </div>
+            <p class="timer-status" id="timerStatus" aria-live="polite">设置完成，等待开始计时</p>
+          </div>
+        </section>
 
-      function formatTime(totalSeconds) {
-        const safe = Math.max(0, Math.ceil(totalSeconds));
-        const m = Math.floor(safe / 60);
-        const s = String(safe % 60).padStart(2, '0');
-        return `${String(m).padStart(2, '0')}:${s}`;
-      }
+        <section class="dice-workspace" aria-labelledby="diceTitle">
+          <div class="section-heading">
+            <div>
+              <p class="section-index">02 / DICE TRAY</p>
+              <h2 id="diceTitle">D&amp;D 物理骰子</h2>
+            </div>
+            <div class="dice-total" aria-live="polite">
+              <span>结果</span>
+              <strong id="diceResult">—</strong>
+            </div>
+          </div>
 
-      function render() {
-        timeAEl.textContent = formatTime(state.remaining.a);
-        timeBEl.textContent = formatTime(state.remaining.b);
+          <div class="dice-selector" id="diceSelector" role="radiogroup" aria-label="选择骰子">
+            <button type="button" data-die="d4" role="radio" aria-checked="false">d4</button>
+            <button type="button" data-die="d6" role="radio" aria-checked="true" class="selected">d6</button>
+            <button type="button" data-die="d8" role="radio" aria-checked="false">d8</button>
+            <button type="button" data-die="d10" role="radio" aria-checked="false">d10</button>
+            <button type="button" data-die="d12" role="radio" aria-checked="false">d12</button>
+            <button type="button" data-die="d20" role="radio" aria-checked="false">d20</button>
+            <button type="button" data-die="d100" role="radio" aria-checked="false">d%</button>
+          </div>
 
-        turnA.disabled = !state.running || state.paused || state.over || state.currentTurn !== 'a';
-        turnB.disabled = !state.running || state.paused || state.over || state.currentTurn !== 'b';
+          <button class="dice-stage" id="diceStage" type="button" aria-label="点击抛骰子">
+            <span class="dice-loading" id="diceLoading">正在准备物理骰子…</span>
+            <span class="fallback-die" id="fallbackDie" hidden aria-hidden="true">6</span>
+          </button>
 
-        cardA.classList.toggle('turn', state.currentTurn === 'a' && state.running && !state.paused && !state.over);
-        cardB.classList.toggle('turn', state.currentTurn === 'b' && state.running && !state.paused && !state.over);
+          <div class="roll-bar">
+            <div>
+              <p class="roll-label" id="rollLabel">六面骰</p>
+              <p class="roll-detail" id="rollDetail">点击骰子或按钮进行投掷</p>
+            </div>
+            <button class="roll-button" id="rollBtn" type="button">抛骰子</button>
+          </div>
 
-        pauseBtn.textContent = state.running ? (state.paused ? '继续' : '暂停') : '开始';
+          <div class="history-block">
+            <div class="history-heading">
+              <span>最近结果</span>
+              <button id="clearHistoryBtn" type="button">清空</button>
+            </div>
+            <ol class="roll-history" id="rollHistory">
+              <li class="empty-history">还没有投掷记录</li>
+            </ol>
+          </div>
+        </section>
+      </div>
+    </main>
 
-        statusA.textContent = state.currentTurn === 'a' && !state.over && state.running ? '计时中' : '等待';
-        statusB.textContent = state.currentTurn === 'b' && !state.over && state.running ? '计时中' : '等待';
-
-        if (state.over) {
-          statusEl.textContent = state.winnerMessage;
-          return;
-        }
-
-        if (!state.running) {
-          statusEl.textContent = '点“开始”后开始计时';
-          return;
-        }
-
-        if (state.paused) {
-          statusEl.textContent = '计时已暂停';
-          return;
-        }
-
-        statusEl.textContent = `轮到${state.currentTurn.toUpperCase()} 方`;
-      }
-
-      function tick(now) {
-        if (!state.running || state.paused || state.over) {
-          return;
-        }
-
-        if (state.lastTickAt === null) {
-          state.lastTickAt = now;
-        } else {
-          const delta = (now - state.lastTickAt) / 1000;
-          state.lastTickAt = now;
-
-          state.remaining[state.currentTurn] -= delta;
-
-          if (state.remaining[state.currentTurn] <= 0) {
-            state.remaining[state.currentTurn] = 0;
-            state.over = true;
-            state.running = false;
-            state.winnerMessage = `${state.currentTurn === 'a' ? 'B 方胜' : 'A 方胜'}：对手计时归零`;
-            render();
-            stopClock();
-            return;
-          }
-        }
-
-        render();
-
-        if (!state.over && !state.paused) {
-          state.raf = requestAnimationFrame(tick);
-        }
-      }
-
-      function startClock() {
-        if (state.over) {
-          return;
-        }
-        if (!state.running) {
-          state.running = true;
-        }
-        state.paused = false;
-        state.lastTickAt = performance.now();
-        state.raf = requestAnimationFrame(tick);
-        render();
-      }
-
-      function pauseClock() {
-        if (!state.running || state.over) return;
-
-        state.paused = !state.paused;
-        if (state.paused) {
-          stopClock();
-        } else {
-          state.lastTickAt = performance.now();
-          state.raf = requestAnimationFrame(tick);
-        }
-        render();
-      }
-
-      function stopClock() {
-        if (state.raf) {
-          cancelAnimationFrame(state.raf);
-          state.raf = null;
-        }
-      }
-
-      function switchTurn() {
-        state.currentTurn = state.currentTurn === 'a' ? 'b' : 'a';
-        state.lastTickAt = performance.now();
-        render();
-      }
-
-      function switchToB() {
-        if (!state.running || state.paused || state.over || state.currentTurn !== 'a') return;
-        switchTurn();
-      }
-
-      function switchToA() {
-        if (!state.running || state.paused || state.over || state.currentTurn !== 'b') return;
-        switchTurn();
-      }
-
-      function enterTimerWithSettings() {
-        const startA = parseDuration(inputA.value);
-        const startB = parseDuration(inputB.value);
-
-        state.remaining.a = startA;
-        state.remaining.b = startB;
-        state.currentTurn = 'a';
-        state.running = false;
-        state.paused = false;
-        state.over = false;
-        state.lastTickAt = null;
-        state.winnerMessage = '';
-        render();
-        showTimerScreen();
-      }
-
-      function resetToSetup() {
-        stopClock();
-        showSetupScreen();
-      }
-
-      function onPauseClick() {
-        if (!state.running) {
-          startClock();
-          return;
-        }
-
-        if (state.over) return;
-        pauseClock();
-      }
-
-      turnA.addEventListener('click', switchToB);
-      turnB.addEventListener('click', switchToA);
-      pauseBtn.addEventListener('click', onPauseClick);
-      resetBtn.addEventListener('click', resetToSetup);
-      startSetupBtn.addEventListener('click', enterTimerWithSettings);
-
-      showSetupScreen();
-      render();
-    </script>
+    <script type="module" src="app.js"></script>
   </body>
 </html>
