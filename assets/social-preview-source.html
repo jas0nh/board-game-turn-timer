@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; width: 1280px; height: 640px; overflow: hidden; }
+  body {
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, sans-serif;
+    color: #171714;
+    background-color: #f4f1ea;
+    background-image:
+      linear-gradient(rgba(32,32,28,.045) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(32,32,28,.045) 1px, transparent 1px);
+    background-size: 24px 24px;
+  }
+  .canvas { position: relative; display: grid; grid-template-columns: 520px 1fr; height: 100%; padding: 54px 58px; }
+  .copy { position: relative; z-index: 2; padding-top: 12px; }
+  .eyebrow { font-size: 17px; font-weight: 700; letter-spacing: .16em; color: #706e66; }
+  h1 { margin: 24px 0 14px; font-size: 82px; line-height: .95; letter-spacing: -.06em; }
+  h2 { margin: 0; max-width: 470px; font-size: 30px; line-height: 1.22; font-weight: 620; }
+  .rule { width: 92px; height: 7px; margin: 32px 0; background: #cb4434; }
+  .features { display: flex; gap: 10px; flex-wrap: wrap; max-width: 450px; }
+  .features span { border: 1px solid #c9c4b7; padding: 9px 12px; background: rgba(255,255,255,.55); font-size: 16px; font-weight: 650; }
+  .phones { position: relative; height: 532px; }
+  .phone { position: absolute; top: 8px; width: 244px; height: 524px; object-fit: cover; object-position: top; border: 7px solid #171714; border-radius: 22px; background: white; box-shadow: 0 22px 44px rgba(35,31,24,.18); }
+  .phone.one { left: 28px; transform: rotate(-2.4deg); }
+  .phone.two { left: 224px; top: -5px; z-index: 2; transform: rotate(1deg); }
+  .phone.three { left: 420px; transform: rotate(3deg); }
+  .corner { position: absolute; right: 28px; bottom: 24px; font-size: 15px; font-weight: 700; letter-spacing: .08em; color: #77736b; }
+</style>
+<body>
+  <main class="canvas">
+    <section class="copy">
+      <div class="eyebrow">TABLETOP UTILITY / ZERO INSTALL</div>
+      <h1>TurnTable<br>回合桌</h1>
+      <h2>Board game turn timer,<br>3D dice & random tools.</h2>
+      <div class="rule"></div>
+      <div class="features">
+        <span>2–8 players</span><span>d4–d100</span><span>mobile-first</span><span>offline fallback</span>
+      </div>
+    </section>
+    <section class="phones">
+      <img class="phone one" src="mobile-turn-timer.png" alt="">
+      <img class="phone two" src="mobile-physical-dice.png" alt="">
+      <img class="phone three" src="mobile-random-number.png" alt="">
+    </section>
+    <div class="corner">board-game-turn-timer.pages.dev</div>
+  </main>
+</body>
+</html>
