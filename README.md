@@ -4,6 +4,8 @@
 
 **一款为桌游、D&D 与多人对局设计的移动端工具：回合计时、物理骰子与随机数，打开网页即可使用。**
 
+**Project status:** active
+
 [**Open the live app →**](https://board-game-turn-timer.pages.dev/)
 
 <table>
