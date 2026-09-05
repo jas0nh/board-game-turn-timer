@@ -10,7 +10,10 @@ const diceDefinitions = {
   d10: { label: '十面骰', notation: '1d10', sides: 10 },
   d12: { label: '十二面骰', notation: '1d12', sides: 12 },
   d20: { label: '二十面骰', notation: '1d20', sides: 20 },
-  d100: { label: '百分骰', notation: ['1d10', '1d10'], sides: 100 },
+  d100: { label: '百分骰', notation: [
+    { qty: 1, sides: 10, themeColor: '#c94736' },
+    { qty: 1, sides: 10, themeColor: '#287ca8' },
+  ], sides: 100 },
 };
 
 const elements = {
@@ -452,7 +455,7 @@ function setSelectedDie(type) {
   });
   elements.rollLabel.textContent = definition.label;
   elements.rollDetail.textContent = type === 'd100'
-    ? '百分骰 + d10 联投；双零计为 100'
+    ? '红色十位 + 蓝色个位；双零计为 100'
     : `投掷 1 颗 ${definition.label}`;
   if (changed) {
     diceState.box?.clear();
@@ -630,7 +633,7 @@ function fallbackResult(type) {
     const ones = randomInteger(10) % 10;
     return {
       value: tens === 0 && ones === 0 ? 100 : (tens * 10) + ones,
-      detail: `${tens * 10 || '00'} + ${ones}`,
+      detail: `十位 ${tens * 10 || '00'} + 个位 ${ones}`,
     };
   }
   return { value: randomInteger(diceDefinitions[type].sides), detail: '' };
@@ -661,7 +664,7 @@ function physicalResult(type, rawResults) {
     const ones = onesRoll.value % 10;
     return {
       value: tens === 0 && ones === 0 ? 100 : tens + ones,
-      detail: `${String(tens).padStart(2, '0')} + ${ones}`,
+      detail: `红色 ${String(tens).padStart(2, '0')} + 蓝色 ${ones}`,
     };
   }
   const roll = rolls.find((item) => item.sides === diceDefinitions[type].sides) ?? rolls[0];
@@ -706,7 +709,9 @@ async function rollDice() {
 
   try {
     if (diceState.ready && diceState.box) {
-      const rawResults = await diceState.box.roll(diceDefinitions[type].notation);
+      const notation = diceDefinitions[type].notation;
+      const rawResults = await diceState.box.roll(Array.isArray(notation)
+        ? notation.map(die => ({ ...die })) : notation);
       result = physicalResult(type, rawResults);
       sharpenDiceCanvas();
     } else {
