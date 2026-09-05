@@ -753,7 +753,7 @@ async function initializeDiceBox() {
   if (diceState.initializing || diceState.ready) return;
   diceState.initializing = true;
   try {
-    const module = await import('https://unpkg.com/@3d-dice/dice-box@1.1.4/dist/dice-box.es.min.js');
+    const module = await import('./vendor/dice-box/dice-box.es.js');
     const DiceBox = module.default;
     const box = new DiceBox({
       container: '#diceStage',
