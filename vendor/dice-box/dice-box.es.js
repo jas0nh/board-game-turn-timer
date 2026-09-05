@@ -167,10 +167,17 @@ class vl {
     }), this.isVisible = !0) : i(this, y, !1), this.loadThemeQueue = hl();
   }
   resizeWorld() {
-    const b = pl(() => {
-      W(this, u).resize({ width: this.canvas.clientWidth, height: this.canvas.clientHeight }), W(this, p) && W(this, p).postMessage({ action: "resize", width: this.canvas.clientWidth, height: this.canvas.clientHeight });
-    });
-    window.addEventListener("resize", b);
+    if (!this._resizeHandler) {
+      this._resizeHandler = pl(() => this.resizeWorld());
+      window.addEventListener("resize", this._resizeHandler);
+    }
+    const width = this.canvas.clientWidth, height = this.canvas.clientHeight;
+    if (!width || !height) return;
+    W(this, u).resize({ width, height });
+    // Resizing changes framing only: settled bodies retain their physical tray.
+  }
+  setView(mode) {
+    W(this, u).setView(mode);
   }
   async init() {
     return W(this, y) ? v(this, E, Gl).call(this) : i(this, K, Promise.resolve()), await v(this, I, cl).call(this), this.resizeWorld(), W(this, u).onRollResult = (l) => {
@@ -190,7 +197,7 @@ class vl {
       X.value = Z.value, X.qty = Z.rollsArray.length, d.completedRolls == d.rolls.length && d.resolve(Object.values(d.rolls).map(({ id: N, ...L }) => L));
       const { collectionId: m, id: V, removeCollectionId: G, meshName: J, ...R } = b;
       this.onRemoveComplete(R);
-    }, await Promise.all([W(this, w), W(this, K)]), W(this, p) && v(this, T, Wl).call(this), await this.loadThemeQueue.push(() => this.loadTheme(this.config.theme)), this.config.preloadThemes.forEach((async function(l) {
+    }, await Promise.all([W(this, w), W(this, K)]), this._physicsReady = true, W(this, p) && v(this, T, Wl).call(this), await this.loadThemeQueue.push(() => this.loadTheme(this.config.theme)), this.config.preloadThemes.forEach((async function(l) {
       await this.loadThemeQueue.push(() => this.loadTheme(l));
     }).bind(this)), this;
   }

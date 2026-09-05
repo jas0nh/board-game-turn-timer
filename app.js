@@ -734,20 +734,27 @@ async function rollDice() {
 }
 
 function sharpenDiceCanvas() {
-  const canvas = elements.diceStage.querySelector('canvas');
-  if (!canvas) return;
-  const ratio = Math.min(window.devicePixelRatio || 1, 2.5);
-  const width = Math.round(elements.diceStage.clientWidth * ratio);
-  const height = Math.round(elements.diceStage.clientHeight * ratio);
-  if (canvas.width !== width) canvas.width = width;
-  if (canvas.height !== height) canvas.height = height;
+  resizeDiceCanvas();
 }
 
 function resizeDiceCanvas() {
   if (!diceState.ready || !diceState.box || elements.dicePanel.hidden) return;
   diceState.box.resizeWorld();
-  requestAnimationFrame(sharpenDiceCanvas);
 }
+
+let diceView = 'perspective';
+try { diceView = localStorage.getItem('dice-view') === 'top' ? 'top' : 'perspective'; } catch {}
+const viewButtons = document.querySelectorAll('[data-dice-view]');
+function updateDiceView() {
+  viewButtons.forEach(button => button.setAttribute('aria-pressed', String(button.dataset.diceView === diceView)));
+  if (diceState.ready) diceState.box.setView(diceView);
+}
+viewButtons.forEach(button => button.addEventListener('click', () => {
+  diceView = button.dataset.diceView;
+  try { localStorage.setItem('dice-view', diceView); } catch {}
+  updateDiceView();
+}));
+updateDiceView();
 
 async function initializeDiceBox() {
   if (diceState.initializing || diceState.ready) return;
@@ -775,6 +782,7 @@ async function initializeDiceBox() {
     diceState.ready = true;
     elements.diceLoading.hidden = true;
     resizeDiceCanvas();
+    updateDiceView();
     await box.roll('1d6');
     sharpenDiceCanvas();
     elements.diceResult.textContent = '—';

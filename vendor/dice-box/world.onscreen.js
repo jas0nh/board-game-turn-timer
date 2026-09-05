@@ -843,9 +843,20 @@ u([
 function Ei(f) {
   const { scene: e } = f;
   let t;
-  const i = 36.5;
-  // View from the near table edge: show side faces even after a die settles.
-  return t = new j("TargetCamera1", new M(0, i, -21), e), t.fov = 0.25, t.minZ = 1, t.maxZ = 100, t.setTarget(M.Zero()), t;
+  return t = new j("TargetCamera1", new M(0, 20, -10), e), t.fov = 38 * Math.PI / 180, t.minZ = 0.1, t.maxZ = 500, t.setTarget(new M(0, 0.5, 0)), t;
+}
+function fitTrayCamera(camera, aspect, mode, trayAspect) {
+  const angle = mode === "top" ? 0.001 : 25 * Math.PI / 180;
+  const sin = Math.sin(angle), cos = Math.cos(angle);
+  const halfX = 9.5 * trayAspect / 2 + 0.15, halfZ = 4.9;
+  const tanY = Math.tan(camera.fov / 2) * 0.84, tanX = tanY * aspect;
+  let distance = 1;
+  for (const x of [-halfX, halfX]) for (const z of [-halfZ, halfZ]) for (const y of [-0.5, 0.55]) {
+    const depth = y * cos - z * sin;
+    distance = Math.max(distance, depth + Math.abs(x) / tanX, depth + Math.abs(y * sin + z * cos) / tanY);
+  }
+  camera.position.copyFrom(new M(0, 0.5 + distance * cos, -distance * sin));
+  camera.setTarget(new M(0, 0.5, 0));
 }
 class D extends He {
   /**
@@ -7826,8 +7837,9 @@ const os = {
 function zt(f = os) {
   const { enableShadows: e, shadowTransparency: t, intensity: i, scene: r } = f, s = new _e("DirectionalLight", new M(-0.3, -1, 0.4), r);
   s.position = new M(-50, 65, -50), s.intensity = 0.65 * i;
-  const n = new ct("HemisphericLight", new M(1, 1, 0), r);
-  return n.intensity = 0.4 * i, e && (s.shadowMinZ = 1, s.shadowMaxZ = 70, s.shadowGenerator = new A(2048, s), s.shadowGenerator.useCloseExponentialShadowMap = !0, s.shadowGenerator.darkness = t), { directional: s, hemispheric: n };
+  const n = new ct("HemisphericLight", new M(0, 1, 0), r);
+  n.groundColor = new he(0.32, 0.35, 0.33);
+  return n.intensity = 0.65 * i, e && (s.shadowMinZ = 1, s.shadowMaxZ = 100, s.shadowGenerator = new A(2048, s), s.shadowGenerator.useCloseExponentialShadowMap = !0, s.shadowGenerator.darkness = t), { directional: s, hemispheric: n };
 }
 function jt(f) {
   let t = [0, 1, 2, 0, 2, 3, 4, 5, 6, 4, 6, 7, 8, 9, 10, 8, 10, 11, 12, 13, 14, 12, 14, 15, 16, 17, 18, 16, 18, 19, 20, 21, 22, 20, 22, 23];
@@ -12707,16 +12719,39 @@ class sa {
     this.config = { ...ra, ...e }, this.create();
   }
   create(e) {
+    if (this.box && (!e || e.aspect === this.config.aspect)) return;
     this.destroy(), Object.assign(this.config, e);
     const { aspect: t, enableDebugging: i, enableShadows: r } = this.config, s = 30;
     this.box = new pi("diceBox");
-    let n = new je("shadowOnly", this.config.scene);
-    n.alpha = r ? 1 : 0, i && (n = new g("diceBox_material"), n.alpha = 0.7, n.diffuseColor = new he(1, 1, 0));
+    let n = new g("trayMatte", this.config.scene);
+    n.diffuseColor = new he(0.39, 0.48, 0.43);
+    n.specularColor = new he(0.025, 0.025, 0.025);
     const a = ye("ground", {
-      width: this.size * 2,
+      width: this.size,
       height: 1,
-      depth: this.size * 2
+      depth: this.size
     }, this.config.scene);
+    a.isPickable = false;
+    const rail = new g("trayRail", this.config.scene);
+    rail.diffuseColor = new he(0.12, 0.16, 0.15);
+    rail.specularColor = new he(0.03, 0.03, 0.03);
+    const detail = new g("trayMarks", this.config.scene);
+    detail.diffuseColor = new he(0.48, 0.56, 0.51);
+    detail.specularColor = new he(0, 0, 0);
+    const add = (name, width, height, depth, x, y, z, material) => {
+      const mesh = ye(name, { width, height, depth }, this.config.scene);
+      mesh.position = new M(x, y, z); mesh.material = material;
+      mesh.isPickable = false; mesh.receiveShadows = true; mesh.setParent(this.box);
+    };
+    // Ammo wall inner faces are size * aspect / 2 - .5; floor top is .5.
+    for (const sign of [-1, 1]) {
+      add("trayEnd", this.size * t, 0.55, 0.5, 0, 0.775, sign * 4.5, rail);
+      add("traySide", 0.5, 0.55, 8.5, sign * (this.size * t / 2 - 0.25), 0.775, 0, rail);
+      for (let x = -this.size * t / 2 + 0.8; x < this.size * t / 2 - 0.7; x += 0.5)
+        add("trayTick", 0.018, 0.002, 0.12, x, 0.502, sign * 4.05, detail);
+    }
+    for (let z = -4; z <= 4; z += 0.16)
+      add("trayGrain", this.size * t - 1.1, 0.001, 0.003, 0, 0.501, z, detail);
     if (a.scaling = new M(t, 1, 1), a.material = n, a.receiveShadows = !0, a.setParent(this.box), i) {
       const o = ye("wallTop", {
         width: this.size,
@@ -12745,7 +12780,7 @@ class sa {
     }
   }
   destroy() {
-    this.box && this.box.dispose();
+    this.box && this.box.dispose(false, true);
   }
 }
 class na {
@@ -12894,7 +12929,7 @@ class aa {
           n = await this.importTextureAsync(`${i}/${r[o]}`, s), r[a] && (n.level = r[a]);
           break;
         case "specular":
-          n = await this.importTextureAsync(`${i}/${r[o]}`, s), r.specularPower && (n.specularPower = r.specularPower);
+          n = await this.importTextureAsync(`${i}/${r[o]}`, s), n.specularPower = 32, n.specularColor = new he(0.12, 0.12, 0.12);
           break;
         default:
           throw new Error(`Texture type: ${e} is not supported`);
@@ -13110,8 +13145,16 @@ class da {
     Fe(this, me)._++;
   }
   resize(e) {
-    const t = C(this, fe).width = e.width, i = C(this, fe).height = e.height;
-    C(this, Qe).create({ aspect: t / i }), C(this, oe).resize();
+    if (!e.width || !e.height) return;
+    this.aspect = e.width / e.height;
+    C(this, oe).setHardwareScalingLevel(1 / Math.min(window.devicePixelRatio || 1, 2.5));
+    C(this, oe).resize();
+    this.setView(this.viewMode || "perspective");
+  }
+  setView(mode) {
+    this.viewMode = mode === "top" ? "top" : "perspective";
+    fitTrayCamera(C(this, at), this.aspect || C(this, fe).clientWidth / C(this, fe).clientHeight, this.viewMode, C(this, Qe).config.aspect);
+    C(this, K).render();
   }
 }
 Z = new WeakMap(), Be = new WeakMap(), me = new WeakMap(), Ve = new WeakMap(), fe = new WeakMap(), oe = new WeakMap(), K = new WeakMap(), at = new WeakMap(), ce = new WeakMap(), Qe = new WeakMap(), Ke = new WeakMap(), ne = new WeakMap(), qe = new WeakMap(), ot = new WeakSet(), Kt = async function(e) {

@@ -159,6 +159,10 @@
             <button type="button" data-die="d100" role="radio" aria-checked="false">d%</button>
           </div>
 
+          <div class="dice-view" role="group" aria-label="骰盘视角">
+            <button type="button" data-dice-view="perspective" aria-pressed="true">立体</button>
+            <button type="button" data-dice-view="top" aria-pressed="false">顶视</button>
+          </div>
           <button class="dice-stage" id="diceStage" type="button" aria-label="点击抛骰子">
             <span class="dice-loading" id="diceLoading">正在准备物理骰子…</span>
             <span class="fallback-die" id="fallbackDie" hidden aria-hidden="true">6</span>
