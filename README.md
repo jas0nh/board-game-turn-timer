@@ -49,6 +49,17 @@ python3 -m http.server 8000
 
 Then open `http://localhost:8000`.
 
+## Codex Cloud
+
+From the repository root, use Node.js 22 to check the script and start a loopback preview:
+
+```bash
+node --check app.js
+npx --yes serve@14.2.4 . --listen tcp://127.0.0.1:4173
+```
+
+Open `http://127.0.0.1:4173` in the cloud browser. Start a two-player game, start the clock, and verify that ending Player 1's turn starts Player 2's clock. Open the dice tray, roll a d6, and verify that the result is between 1 and 6 and matches the latest history entry. If Cloud blocks the 3D assets from `unpkg.com`, repeat the dice check in lightweight random mode.
+
 ## Deploy
 
 This repository is ready for Cloudflare Pages with no build step:
